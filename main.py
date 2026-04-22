@@ -1,8 +1,11 @@
-from database import create_table, get_connection
+from datetime import datetime
+from database import create_table
 from load_data import load_data
 import sqlite3
 
 DB_NAME = "babynames.db"
+MIN_YEAR = 1880
+MAX_YEAR = datetime.now().year
 
 
 def validate_name(name):
@@ -16,12 +19,12 @@ def validate_year(year_str):
     """Validate year input"""
     try:
         year = int(year_str)
-        if year < 1880 or year > 2026:  # SSA data starts around 1880
-            raise ValueError("Year must be between 1880 and 2026")
+        if year < MIN_YEAR or year > MAX_YEAR:
+            raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
         return year
     except ValueError:
         if year_str.strip().isdigit():
-            raise ValueError("Year must be between 1880 and 2026")
+            raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
         raise ValueError("Year must be a valid number")
 
 
@@ -41,6 +44,8 @@ def validate_count(count_str):
             raise ValueError("Count cannot be negative")
         return count
     except ValueError:
+        if count_str.strip().lstrip("-").isdigit():
+            raise ValueError("Count cannot be negative")
         raise ValueError("Count must be a valid number")
 
 
@@ -97,6 +102,8 @@ def update_name():
     """Update a name's count in the database"""
     try:
         name = validate_name(input("Enter name to update: "))
+        year = validate_year(input("Enter year for the record: "))
+        gender = validate_gender(input("Enter gender for the record (M/F): "))
         new_count = validate_count(input("Enter new count: "))
 
         with sqlite3.connect(DB_NAME) as conn:
@@ -104,14 +111,14 @@ def update_name():
             cursor.execute("""
                 UPDATE baby_names
                 SET count = ?
-                WHERE name = ?
-            """, (new_count, name))
+                WHERE name = ? AND year = ? AND gender = ?
+            """, (new_count, name, year, gender))
 
             if cursor.rowcount == 0:
-                print(f"ERROR: No records found for '{name}'")
+                print(f"ERROR: No record found for '{name}' ({gender}, {year})")
             else:
                 conn.commit()
-                print(f"SUCCESS: Updated {cursor.rowcount} record(s) for '{name}' to count {new_count}")
+                print(f"SUCCESS: Updated '{name}' ({gender}, {year}) to count {new_count}")
 
     except ValueError as e:
         print(f"ERROR: Error: {e}")
@@ -123,23 +130,28 @@ def delete_name():
     """Delete a name from the database"""
     try:
         name = validate_name(input("Enter name to delete: "))
+        year = validate_year(input("Enter year for the record: "))
+        gender = validate_gender(input("Enter gender for the record (M/F): "))
 
         # Confirm deletion
-        confirm = input(f"Are you sure you want to delete all records for '{name}'? (y/N): ")
+        confirm = input(f"Are you sure you want to delete '{name}' ({gender}, {year})? (y/N): ")
         if confirm.lower() != 'y':
             print("Deletion cancelled")
             return
 
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM baby_names WHERE name = ?", (name,))
+            cursor.execute("""
+                DELETE FROM baby_names
+                WHERE name = ? AND year = ? AND gender = ?
+            """, (name, year, gender))
             deleted_count = cursor.rowcount
             conn.commit()
 
         if deleted_count == 0:
-            print(f"ERROR: No records found for '{name}'")
+            print(f"ERROR: No record found for '{name}' ({gender}, {year})")
         else:
-            print(f"SUCCESS: Deleted {deleted_count} record(s) for '{name}'")
+            print(f"SUCCESS: Deleted '{name}' ({gender}, {year})")
 
     except ValueError as e:
         print(f"ERROR: Error: {e}")
@@ -155,9 +167,17 @@ def load_ssa_data():
             print("ERROR: File path cannot be empty")
             return
 
-        load_data(file_path)
-        print(f"SUCCESS: Data loaded from {file_path}")
+        imported_rows = load_data(file_path)
+        print(f"SUCCESS: Loaded {imported_rows} records from {file_path}")
 
+    except FileNotFoundError:
+        print("ERROR: File not found. Check the file path.")
+    except ValueError as e:
+        print(f"ERROR: {e}")
+    except OSError as e:
+        print(f"ERROR: File error: {e}")
+    except sqlite3.Error as e:
+        print(f"ERROR: Database error: {e}")
     except Exception as e:
         print(f"ERROR: Error loading data: {e}")
 

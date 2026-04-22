@@ -1,10 +1,13 @@
 from flask import Flask, request, jsonify
+from datetime import datetime
 import sqlite3
 import re
+from database import create_table
 
 app = Flask(__name__)
 
 DB_NAME = "babynames.db"
+create_table()
 
 
 def validate_name(name):
@@ -72,6 +75,15 @@ def name_info():
             """, (name,))
             top_years_results = cursor.fetchall()
             top_years = [row[0] for row in top_years_results]
+
+            cursor.execute("""
+                SELECT year, SUM(count) AS total_count
+                FROM baby_names
+                WHERE name = ?
+                GROUP BY year
+                ORDER BY year ASC
+            """, (name,))
+            yearly_totals = cursor.fetchall()
             
     except sqlite3.Error as e:
         return jsonify({"error": f"Database error: {str(e)}"}), 500
@@ -85,15 +97,20 @@ def name_info():
         }), 404
     
     # Estimate age
-    estimated_age = 2026 - most_popular_year if most_popular_year else None
-    
-    # Trend logic
+    current_year = datetime.now().year
+    estimated_age = current_year - most_popular_year if most_popular_year else None
+
+    # Compare earliest and latest popularity totals to classify the trend.
     trend = "unknown"
-    if len(top_years) > 1:
-        if top_years[0] > top_years[-1]:
+    if len(yearly_totals) > 1:
+        first_total = yearly_totals[0][1]
+        last_total = yearly_totals[-1][1]
+        if last_total > first_total:
             trend = "recent"
-        else:
+        elif last_total < first_total:
             trend = "older"
+        else:
+            trend = "stable"
     
     return jsonify({
         "name": name,
