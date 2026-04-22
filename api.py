@@ -15,6 +15,9 @@ def home():
 def name_info():
     name = request.args.get("name")
 
+    if not name:
+        return jsonify({"error": "Name parameter is required"}), 400
+
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -34,7 +37,7 @@ def name_info():
     cursor.execute("""
         SELECT DISTINCT year FROM baby_names
         WHERE name = ?
-        ORDER BY count DESC LIMIT 10
+        ORDER BY year DESC LIMIT 10
     """, (name,))
     top_years = [row[0] for row in cursor.fetchall()]
 
@@ -47,9 +50,9 @@ def name_info():
     trend = "unknown"
     if len(top_years) > 1:
         if top_years[0] > top_years[-1]:
-            trend = "rising"
+            trend = "recent"
         else:
-            trend = "declining"
+            trend = "older"
 
     return jsonify({
         "name": name,
