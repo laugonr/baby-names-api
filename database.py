@@ -6,18 +6,17 @@ def get_connection():
     return sqlite3.connect(DB_NAME)
 
 def create_table():
-    conn = get_connection()
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS baby_names (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        year INTEGER NOT NULL,
-        gender TEXT NOT NULL,
-        count INTEGER NOT NULL
-    )
-    """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS baby_names (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            year INTEGER NOT NULL,
+            gender TEXT NOT NULL,
+            count INTEGER NOT NULL
+        )
+        """)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
