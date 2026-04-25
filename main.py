@@ -19,13 +19,11 @@ def validate_year(year_str):
     """Validate year input"""
     try:
         year = int(year_str)
-        if year < MIN_YEAR or year > MAX_YEAR:
-            raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
-        return year
     except ValueError:
-        if year_str.strip().isdigit():
-            raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
         raise ValueError("Year must be a valid number")
+    if year < MIN_YEAR or year > MAX_YEAR:
+        raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
+    return year
 
 
 def validate_gender(gender):
@@ -40,13 +38,11 @@ def validate_count(count_str):
     """Validate count input"""
     try:
         count = int(count_str)
-        if count < 0:
-            raise ValueError("Count cannot be negative")
-        return count
     except ValueError:
-        if count_str.strip().lstrip("-").isdigit():
-            raise ValueError("Count cannot be negative")
         raise ValueError("Count must be a valid number")
+    if count < 0:
+        raise ValueError("Count cannot be negative")
+    return count
 
 
 def add_name():
@@ -68,7 +64,7 @@ def add_name():
         print(f"SUCCESS: Added {name} ({gender}, {year}) with count {count}")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
@@ -93,7 +89,7 @@ def search_name():
             print(f"ID: {row[0]}, Year: {row[2]}, Gender: {row[3]}, Count: {row[4]}")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
@@ -121,7 +117,7 @@ def update_name():
                 print(f"SUCCESS: Updated '{name}' ({gender}, {year}) to count {new_count}")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
@@ -133,7 +129,6 @@ def delete_name():
         year = validate_year(input("Enter year for the record: "))
         gender = validate_gender(input("Enter gender for the record (M/F): "))
 
-        # Confirm deletion
         confirm = input(f"Are you sure you want to delete '{name}' ({gender}, {year})? (y/N): ")
         if confirm.lower() != 'y':
             print("Deletion cancelled")
@@ -154,7 +149,7 @@ def delete_name():
             print(f"SUCCESS: Deleted '{name}' ({gender}, {year})")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
