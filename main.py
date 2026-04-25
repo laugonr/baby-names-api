@@ -1,87 +1,50 @@
-from datetime import datetime
-from database import create_table
+from database import create_table, get_connection
 from load_data import load_data
+from validation import validate_count, validate_gender, validate_name, validate_year
 import sqlite3
 
-DB_NAME = "babynames.db"
-MIN_YEAR = 1880
-MAX_YEAR = datetime.now().year
 
-
-def validate_name(name):
-    """Validate name input"""
-    if not name or not name.strip():
-        raise ValueError("Name cannot be empty")
-    return name.strip().title()
-
-
-def validate_year(year_str):
-    """Validate year input"""
-    try:
-        year = int(year_str)
-        if year < MIN_YEAR or year > MAX_YEAR:
-            raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
-        return year
-    except ValueError:
-        if year_str.strip().isdigit():
-            raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
-        raise ValueError("Year must be a valid number")
-
-
-def validate_gender(gender):
-    """Validate gender input"""
-    gender = gender.upper()
-    if gender not in ['M', 'F']:
-        raise ValueError("Gender must be 'M' or 'F'")
-    return gender
-
-
-def validate_count(count_str):
-    """Validate count input"""
-    try:
-        count = int(count_str)
-        if count < 0:
-            raise ValueError("Count cannot be negative")
-        return count
-    except ValueError:
-        if count_str.strip().lstrip("-").isdigit():
-            raise ValueError("Count cannot be negative")
-        raise ValueError("Count must be a valid number")
+def prompt_record(include_count=False):
+    record = [
+        validate_name(input("Enter name: ")),
+        validate_year(input("Enter year: ")),
+        validate_gender(input("Enter gender (M/F): "))
+    ]
+    if include_count:
+        record.append(validate_count(input("Enter count: ")))
+    return record
 
 
 def add_name():
-    """Add a new name to the database"""
+    """Add a new name to the database."""
     try:
-        name = validate_name(input("Enter name: "))
-        year = validate_year(input("Enter year: "))
-        gender = validate_gender(input("Enter gender (M/F): "))
-        count = validate_count(input("Enter count: "))
-
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+        name, year, gender, count = prompt_record(include_count=True)
+        with get_connection() as conn:
+            conn.execute("""
                 INSERT INTO baby_names (name, year, gender, count)
                 VALUES (?, ?, ?, ?)
             """, (name, year, gender, count))
-            conn.commit()
-
         print(f"SUCCESS: Added {name} ({gender}, {year}) with count {count}")
-
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
+    except sqlite3.IntegrityError:
+        print("ERROR: That name, year, and gender already exists")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
 
 def search_name():
-    """Search for names in the database"""
+    """Search for names in the database."""
     try:
         name = validate_name(input("Enter name to search: "))
 
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM baby_names WHERE name = ?", (name,))
-            results = cursor.fetchall()
+        with get_connection() as conn:
+            results = conn.execute("""
+                SELECT id, name, year, gender, count
+                FROM baby_names
+                WHERE name = ?
+                ORDER BY year, gender
+            """, (name,)).fetchall()
 
         if not results:
             print(f"No records found for '{name}'")
@@ -93,22 +56,19 @@ def search_name():
             print(f"ID: {row[0]}, Year: {row[2]}, Gender: {row[3]}, Count: {row[4]}")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
 
 def update_name():
-    """Update a name's count in the database"""
+    """Update a name's count in the database."""
     try:
-        name = validate_name(input("Enter name to update: "))
-        year = validate_year(input("Enter year for the record: "))
-        gender = validate_gender(input("Enter gender for the record (M/F): "))
+        name, year, gender = prompt_record()
         new_count = validate_count(input("Enter new count: "))
 
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+        with get_connection() as conn:
+            cursor = conn.execute("""
                 UPDATE baby_names
                 SET count = ?
                 WHERE name = ? AND year = ? AND gender = ?
@@ -121,32 +81,27 @@ def update_name():
                 print(f"SUCCESS: Updated '{name}' ({gender}, {year}) to count {new_count}")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 
 
 def delete_name():
-    """Delete a name from the database"""
+    """Delete a name from the database."""
     try:
-        name = validate_name(input("Enter name to delete: "))
-        year = validate_year(input("Enter year for the record: "))
-        gender = validate_gender(input("Enter gender for the record (M/F): "))
+        name, year, gender = prompt_record()
 
-        # Confirm deletion
         confirm = input(f"Are you sure you want to delete '{name}' ({gender}, {year})? (y/N): ")
         if confirm.lower() != 'y':
             print("Deletion cancelled")
             return
 
-        with sqlite3.connect(DB_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+        with get_connection() as conn:
+            cursor = conn.execute("""
                 DELETE FROM baby_names
                 WHERE name = ? AND year = ? AND gender = ?
             """, (name, year, gender))
             deleted_count = cursor.rowcount
-            conn.commit()
 
         if deleted_count == 0:
             print(f"ERROR: No record found for '{name}' ({gender}, {year})")
@@ -154,7 +109,7 @@ def delete_name():
             print(f"SUCCESS: Deleted '{name}' ({gender}, {year})")
 
     except ValueError as e:
-        print(f"ERROR: Error: {e}")
+        print(f"ERROR: {e}")
     except sqlite3.Error as e:
         print(f"ERROR: Database error: {e}")
 

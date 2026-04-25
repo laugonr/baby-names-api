@@ -1,7 +1,7 @@
 import re
-import sqlite3
 
-DB_NAME = "babynames.db"
+from database import create_table, get_connection
+from validation import validate_count, validate_gender, validate_name
 
 
 def extract_year(file_path):
@@ -13,19 +13,25 @@ def extract_year(file_path):
 
 
 def load_data(file_path):
+    create_table()
     year = extract_year(file_path)
     imported_rows = 0
 
-    with sqlite3.connect(DB_NAME) as conn:
+    with get_connection() as conn:
         cursor = conn.cursor()
         with open(file_path, "r") as file:
             for line in file:
                 name, gender, count = line.strip().split(",")
                 cursor.execute("""
-                    INSERT INTO baby_names (name, year, gender, count)
+                    INSERT OR IGNORE INTO baby_names (name, year, gender, count)
                     VALUES (?, ?, ?, ?)
-                """, (name, year, gender, int(count)))
-                imported_rows += 1
+                """, (
+                    validate_name(name),
+                    year,
+                    validate_gender(gender),
+                    validate_count(count)
+                ))
+                imported_rows += cursor.rowcount
 
         conn.commit()
     return imported_rows
