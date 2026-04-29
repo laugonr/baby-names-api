@@ -66,6 +66,6 @@ def load_all_data(folder="names"):
 
     print(f"\nTOTAL LOADED: {total}")
 
-
+# imported all data when run directly and all files is on names folder.
 if __name__ == "__main__":
     load_all_data("names")
