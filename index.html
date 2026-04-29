@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Baby Name Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg: #080b14;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.08);
+      --accent1: #e879f9;
+      --accent2: #38bdf8;
+      --accent3: #fb923c;
+      --text: #f1f5f9;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Animated background ── */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: .18;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 500px; height: 500px; background: var(--accent1); top: -100px; left: -150px; animation-delay: 0s; }
+    .orb-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; right: -100px; animation-delay: -4s; }
+    .orb-3 { width: 300px; height: 300px; background: var(--accent3); top: 40%; left: 40%; animation-delay: -8s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.1); }
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 60px 20px 80px;
+    }
+
+    /* ── Header ── */
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-top: 8px;
+      font-weight: 300;
+    }
+
+    /* ── Search bar ── */
+    .search-wrap {
+      display: flex;
+      gap: 10px;
+      margin-top: 36px;
+      flex-wrap: wrap;
+    }
+    .search-field {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px 14px;
+      transition: border-color .2s;
+    }
+    .search-field:focus-within { border-color: var(--accent1); }
+    .search-field input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      width: 100%;
+      padding: 8px 4px;
+    }
+    .search-field input::placeholder { color: var(--muted); }
+    .gender-pill {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .gender-pill button {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .9rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .gender-pill button.active {
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: white;
+    }
+    .btn-search {
+      border: none;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: white;
+      border-radius: 14px;
+      padding: 12px 28px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn-search:hover { opacity: .85; }
+    .btn-search:active { transform: scale(.97); }
+
+    /* Compare toggle */
+    .compare-toggle {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    .switch {
+      position: relative; width: 40px; height: 22px;
+    }
+    .switch input { display: none; }
+    .slider {
+      position: absolute; inset: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      background: var(--muted);
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: .2s;
+    }
+    .switch input:checked + .slider { border-color: var(--accent1); }
+    .switch input:checked + .slider::before {
+      background: var(--accent1);
+      transform: translateX(18px);
+    }
+    #name2wrap { display: none; }
+
+    /* ── Stat cards ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 36px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .25s, background .25s;
+      animation: fadeUp .5s ease both;
+    }
+    .stat-card:hover { transform: translateY(-4px); background: var(--surface-hover); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent1) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .stat-card:hover::before { opacity: .06; }
+
+    .stat-label { font-size: .78rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
+    .stat-value { font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 700; margin-top: 8px; }
+    .stat-badge {
+      display: inline-block;
+      font-size: .7rem;
+      padding: 2px 10px;
+      border-radius: 99px;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .badge-rising  { background: rgba(56,189,248,.15); color: var(--accent2); }
+    .badge-falling { background: rgba(248,113,113,.15); color: #f87171; }
+    .badge-stable  { background: rgba(100,116,139,.15); color: var(--muted); }
+    .badge-peak    { background: rgba(232,121,249,.15); color: var(--accent1); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Chart card ── */
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      margin-top: 20px;
+      animation: fadeUp .6s ease .1s both;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .chart-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .legend-item { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+    .legend-row { display: flex; gap: 18px; }
+
+    /* ── Loading ── */
+    .loader {
+      display: none;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 40px;
+    }
+    .loader.active { display: flex; }
+    .loader span {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent1);
+      animation: bounce .8s ease-in-out infinite;
+    }
+    .loader span:nth-child(2) { animation-delay: .15s; background: var(--accent2); }
+    .loader span:nth-child(3) { animation-delay: .3s; background: var(--accent3); }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+
+    /* ── Error ── */
+    .err-box {
+      display: none;
+      background: rgba(248,113,113,.1);
+      border: 1px solid rgba(248,113,113,.3);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-top: 24px;
+      color: #fca5a5;
+      font-size: .9rem;
+    }
+    .err-box.active { display: block; }
+
+    /* ── Results wrapper ── */
+    #results { display: none; }
+    #results.active { display: block; }
+
+    /* ── Fun fact bar ── */
+    .fun-fact {
+      margin-top: 16px;
+      background: linear-gradient(135deg, rgba(232,121,249,.08), rgba(56,189,248,.08));
+      border: 1px solid rgba(232,121,249,.15);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: .85rem;
+      color: #cbd5e1;
+      animation: fadeUp .6s ease .2s both;
+    }
+    .fun-fact strong { color: var(--accent1); }
+
+    /* divider */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 36px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-canvas">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <div style="text-align:center; margin-bottom: 8px;">
+    <div class="hero-title">Baby Name Analyzer</div>
+    <div class="hero-sub">Discover how popular a name has been through the decades</div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <div class="search-field">
+      <span style="font-size:1.1rem; margin-right:6px;"></span>
+      <input id="nameInput" type="text" placeholder="Enter a name — e.g. Emma" onkeydown="if(event.key==='Enter') searchName()">
+    </div>
+    <div class="gender-pill">
+      <button id="gBtn" class="active" onclick="setGender('M')">♂ M</button>
+      <button id="gBtnF" onclick="setGender('F')">♀ F</button>
+    </div>
+    <button class="btn-search" onclick="searchName()">Analyze →</button>
+  </div>
+
+  <!-- Compare toggle -->
+  <div class="compare-toggle">
+    <label class="switch">
+      <input type="checkbox" id="compareToggle" onchange="toggleCompare()">
+      <span class="slider"></span>
+    </label>
+    <span>Compare two names</span>
+    <span id="name2wrap">
+      &nbsp;vs&nbsp;
+      <div class="search-field" style="display:inline-flex; width:160px; padding:4px 10px;">
+        <input id="nameInput2" type="text" placeholder="Second name" style="font-size:.9rem;" onkeydown="if(event.key==='Enter') searchName()">
+      </div>
+    </span>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <span></span><span></span><span></span>
+  </div>
+
+  <!-- Error -->
+  <div class="err-box" id="errBox"></div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <!-- Stat cards -->
+    <div class="stat-grid" id="statGrid"></div>
+
+    <!-- Fun fact -->
+    <div class="fun-fact" id="funFact"></div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Popularity Over Time</div>
+        <div class="legend-row" id="legendRow"></div>
+      </div>
+      <canvas id="chart" height="280"></canvas>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// index.html is the browser interface.
+// It collects the user's search, calls the FastAPI backend, and displays
+// the returned baby-name statistics as cards and a chart.
+
+// Store the current chart so it can be replaced after each new search.
+let chart;
+
+// The selected gender is shared by normal search and compare mode.
+let currentGender = 'M';
+
+// If the file is opened directly, call the local API server.
+// If FastAPI serves this page from /app, use the same domain.
+const apiBase = window.location.protocol === "file:" ? "http://localhost:8000" : "";
+
+// Update the selected gender and the active button styling.
+function setGender(g) {
+  currentGender = g;
+  document.getElementById('gBtn').classList.toggle('active', g === 'M');
+  document.getElementById('gBtnF').classList.toggle('active', g === 'F');
+}
+
+// Show or hide the second name input when compare mode is switched.
+function toggleCompare() {
+  const on = document.getElementById('compareToggle').checked;
+  document.getElementById('name2wrap').style.display = on ? 'inline-flex' : 'none';
+}
+
+// Small helper functions for changing page state.
+function showLoader(v) {
+  document.getElementById('loader').classList.toggle('active', v);
+}
+function showError(msg) {
+  const el = document.getElementById('errBox');
+  el.textContent = '⚠ ' + msg;
+  el.classList.toggle('active', !!msg);
+}
+function showResults(v) {
+  document.getElementById('results').classList.toggle('active', v);
+}
+
+// Decide which badge best describes the name's popularity trend.
+function trendBadge(data) {
+  if (data.length < 10) return { label: 'Limited data', cls: 'badge-stable' };
+  const recent = data.slice(-10).reduce((s, d) => s + d.count, 0) / 10;
+  const older  = data.slice(0, 10).reduce((s, d) => s + d.count, 0) / 10;
+  const ratio  = recent / (older || 1);
+  if (ratio > 1.5)  return { label: '🚀 Trending up',    cls: 'badge-rising' };
+  if (ratio < 0.6)  return { label: '📉 Declining',      cls: 'badge-falling' };
+  return                   { label: '〰 Staying steady', cls: 'badge-stable' };
+}
+
+// Convert API data into the four stat cards shown above the chart.
+function buildStats(data) {
+  const trend = trendBadge(data.yearly_data);
+  const peak  = data.yearly_data.reduce((a, b) => b.count > a.count ? b : a, data.yearly_data[0]);
+
+  return [
+    {
+      label: 'First Recorded',
+      value: data.first_year,
+      badge: null,
+      delay: 0
+    },
+    {
+      label: 'Peak Year',
+      value: data.most_popular_year,
+      badge: { label: `👑 ${peak.count.toLocaleString()} babies`, cls: 'badge-peak' },
+      delay: .05
+    },
+    {
+      label: 'Estimated Age',
+      value: data.estimated_age,
+      badge: null,
+      delay: .1
+    },
+    {
+      label: 'Trend',
+      value: trend.label,
+      badge: null,
+      delay: .15,
+      isText: true
+    }
+  ];
+}
+
+// Put the stat card HTML into the page.
+function renderStats(stats) {
+  const grid = document.getElementById('statGrid');
+  grid.innerHTML = stats.map(s => `
+    <div class="stat-card" style="animation-delay:${s.delay}s">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value" style="font-size:${s.isText ? '1.25rem' : '2.2rem'}">${s.value}</div>
+      ${s.badge ? `<span class="stat-badge ${s.badge.cls}">${s.badge.label}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+// Build the short sentence below the cards using total and average births.
+function renderFunFact(data, name) {
+  const total = data.yearly_data.reduce((s, d) => s + d.count, 0);
+  const span  = data.yearly_data.length;
+  document.getElementById('funFact').innerHTML =
+    `📊 <strong>${name}</strong> has been recorded <strong>${total.toLocaleString()}</strong> times across <strong>${span} years</strong> of data — that's roughly <strong>${Math.round(total/span).toLocaleString()}</strong> babies per year on average.`;
+}
+
+const COLORS = [
+  { border: '#e879f9', bg: 'rgba(232,121,249,0.12)' },
+  { border: '#38bdf8', bg: 'rgba(56,189,248,0.12)' }
+];
+
+// Draw or redraw the line chart with Chart.js.
+function drawChart(datasets) {
+  const ctx = document.getElementById('chart');
+
+  // Destroying the old chart prevents duplicate charts from stacking.
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: datasets[0].yearly_data.map(d => d.year),
+      datasets: datasets.map((ds, i) => ({
+        label: ds.name,
+        data: ds.yearly_data.map(d => d.count),
+        borderColor: COLORS[i].border,
+        backgroundColor: COLORS[i].bg,
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        tension: 0.4,
+        fill: true
+      }))
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e293b',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#f1f5f9',
+          padding: 12,
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} births`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#64748b', font: { family: 'DM Sans', size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: '#64748b',
+            font: { family: 'DM Sans', size: 11 },
+            callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v
+          }
+        }
+      }
+    }
+  });
+
+  // Build a custom legend that matches the chart colors.
+  const lr = document.getElementById('legendRow');
+  lr.innerHTML = datasets.map((ds, i) => `
+    <div class="legend-item">
+      <span class="legend-dot" style="background:${COLORS[i].border}"></span>
+      ${ds.name}
+    </div>
+  `).join('');
+}
+
+// Convert different API error shapes into one readable message.
+function getErrorMessage(data) {
+  if (typeof data.detail === 'string') return data.detail;
+  if (data.detail?.error) return data.detail.error;
+  if (Array.isArray(data.detail) && data.detail.length) return data.detail[0].msg;
+  return data.error || 'No data found for this name.';
+}
+
+// Call the backend for one name and return its JSON data.
+async function fetchName(name) {
+  const res  = await fetch(`${apiBase}/nameinfo?name=${encodeURIComponent(name)}&gender=${currentGender}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(getErrorMessage(data));
+  return { ...data, name };
+}
+
+// Main search flow: read inputs, fetch data, then update every result section.
+async function searchName() {
+  const name1 = document.getElementById('nameInput').value.trim();
+  if (!name1) return;
+
+  const comparing = document.getElementById('compareToggle').checked;
+  const name2     = comparing ? document.getElementById('nameInput2').value.trim() : '';
+
+  showError('');
+  showResults(false);
+  showLoader(true);
+
+  try {
+    // Always search the first name; add the second request only in compare mode.
+    const requests = [fetchName(name1)];
+    if (comparing && name2) requests.push(fetchName(name2));
+
+    // Promise.all lets the two comparison searches happen at the same time.
+    const results = await Promise.all(requests);
+
+    // The cards and fun fact summarize the first searched name.
+    const stats = buildStats(results[0]);
+    renderStats(stats);
+    renderFunFact(results[0], name1);
+
+    // The chart can show one or two names depending on compare mode.
+    drawChart(results);
+    showResults(true);
+
+  } catch (err) {
+    showError(err.message);
+  }
+
+  showLoader(false);
+}
+</script>
+</body>
+</html>

@@ -1,12 +1,15 @@
 import re
-from datetime import datetime
 
-MIN_YEAR = 1880
-MAX_YEAR = datetime.now().year
+# validation.py protects the app from bad input before data is saved or queried.
+# The API and data loader both use these functions so the same rules apply
+# everywhere.
+
+# Names can contain letters, spaces, hyphens, and apostrophes.
 NAME_PATTERN = re.compile(r"^[a-zA-Z\s\-']+$")
 
 
 def validate_name(name, message="Name cannot be empty"):
+    """Clean a name and make sure it only has allowed characters."""
     if not name or not name.strip():
         raise ValueError(message)
 
@@ -18,18 +21,8 @@ def validate_name(name, message="Name cannot be empty"):
     return name.title()
 
 
-def validate_year(year_str):
-    try:
-        year = int(year_str)
-    except ValueError:
-        raise ValueError("Year must be a valid number")
-
-    if year < MIN_YEAR or year > MAX_YEAR:
-        raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
-    return year
-
-
 def validate_gender(gender):
+    """Make sure gender is either M or F."""
     gender = gender.strip().upper()
     if gender not in ("M", "F"):
         raise ValueError("Gender must be 'M' or 'F'")
@@ -37,10 +30,11 @@ def validate_gender(gender):
 
 
 def validate_count(count_str):
+    """Make sure the birth count is a non-negative number."""
     try:
         count = int(count_str)
-    except ValueError:
-        raise ValueError("Count must be a valid number")
+    except ValueError as exc:
+        raise ValueError("Count must be a valid number") from exc
 
     if count < 0:
         raise ValueError("Count cannot be negative")
