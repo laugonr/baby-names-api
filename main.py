@@ -2,35 +2,6 @@ from database import create_table, get_connection
 from load_data import load_data
 from validation import validate_count, validate_gender, validate_name, validate_year
 import sqlite3
-import os
-
-
-def load_all_data():
-    """Load every SSA text file from the data folder."""
-    folder = "data"   # your folder name
-    total = 0
-
-    try:
-        # Get all files in the folder before checking which ones are SSA files.
-        files = os.listdir(folder)
-    except FileNotFoundError:
-        print("ERROR: 'data' folder not found")
-        return
-
-    for file in files:
-        # SSA files are named like yob2024.txt.
-        if file.startswith("yob") and file.endswith(".txt"):
-            path = os.path.join(folder, file)
-
-            try:
-                # load_data reads one file and inserts its records.
-                rows = load_data(path)
-                total += rows
-                print(f"Loaded {file}: {rows}")
-            except Exception as e:
-                print(f"ERROR loading {file}: {e}")
-
-    print(f"\nTOTAL LOADED: {total}")
 
 
 def prompt_record(include_count=False):

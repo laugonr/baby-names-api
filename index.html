@@ -420,7 +420,7 @@ function trendBadge(data) {
   return                   { label: '〰 Staying steady', cls: 'badge-stable' };
 }
 
-function buildStats(data, name, color) {
+function buildStats(data) {
   const trend = trendBadge(data.yearly_data);
   const peak  = data.yearly_data.reduce((a, b) => b.count > a.count ? b : a, data.yearly_data[0]);
 
@@ -571,8 +571,7 @@ async function searchName() {
 
     const results = await Promise.all(requests);
 
-    // Stats from first name only
-    const stats = buildStats(results[0], name1);
+    const stats = buildStats(results[0]);
     renderStats(stats);
     renderFunFact(results[0], name1);
     drawChart(results);
