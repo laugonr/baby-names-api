@@ -1,11 +1,4 @@
 import re
-from datetime import datetime
-
-# SSA baby name data starts in 1880.
-MIN_YEAR = 1880
-
-# Do not allow future years.
-MAX_YEAR = datetime.now().year
 
 # Names can contain letters, spaces, hyphens, and apostrophes.
 NAME_PATTERN = re.compile(r"^[a-zA-Z\s\-']+$")
@@ -22,18 +15,6 @@ def validate_name(name, message="Name cannot be empty"):
     if not NAME_PATTERN.fullmatch(name):
         raise ValueError("Name contains invalid characters")
     return name.title()
-
-
-def validate_year(year_str):
-    """Make sure the year is a real number within the allowed range."""
-    try:
-        year = int(year_str)
-    except ValueError as exc:
-        raise ValueError("Year must be a valid number") from exc
-
-    if year < MIN_YEAR or year > MAX_YEAR:
-        raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
-    return year
 
 
 def validate_gender(gender):
