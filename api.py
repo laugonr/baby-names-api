@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from database import create_table, get_connection
-from validation import validate_name
+from validation import validate_gender, validate_name
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -35,7 +35,7 @@ def home():
         "endpoints": {
             "GET /": "API information",
             "GET /app": "Baby name analyzer web app",
-            "GET /nameinfo?name=<name>": "Get name statistics",
+            "GET /nameinfo?name=<name>&gender=<M|F>": "Get name statistics",
             "GET /docs": "Interactive API docs",
         },
     }
@@ -47,12 +47,16 @@ def frontend():
 
 
 @app.get("/nameinfo")
-def name_info(name: str = Query(..., description="Name to search for")):
+def name_info(
+    name: str = Query(..., description="Name to search for"),
+    gender: str = Query(..., description="Gender to search for: M or F"),
+):
     try:
         validated_name = validate_name(
             name,
             message="Name parameter is required",
         )
+        validated_gender = validate_gender(gender)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -61,10 +65,10 @@ def name_info(name: str = Query(..., description="Name to search for")):
             yearly_totals = conn.execute("""
                 SELECT year, SUM(count) AS total_count
                 FROM baby_names
-                WHERE name = ?
+                WHERE name = ? AND gender = ?
                 GROUP BY year
                 ORDER BY year ASC
-            """, (validated_name,)).fetchall()
+            """, (validated_name, validated_gender)).fetchall()
 
     except sqlite3.Error as e:
         raise HTTPException(
@@ -78,6 +82,7 @@ def name_info(name: str = Query(..., description="Name to search for")):
             detail={
                 "error": f"Name '{validated_name}' not found in database",
                 "name": validated_name,
+                "gender": validated_gender,
                 "available": False,
             },
         )
@@ -112,6 +117,7 @@ def name_info(name: str = Query(..., description="Name to search for")):
 
     return {
         "name": validated_name,
+        "gender": validated_gender,
         "first_year": first_year,
         "most_popular_year": most_popular_year,
         "top_years": top_years,
