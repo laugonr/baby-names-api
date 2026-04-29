@@ -1,35 +1,60 @@
-from flask import Flask, request, jsonify
 from datetime import datetime
+from pathlib import Path
 import sqlite3
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
 from database import create_table, get_connection
 from validation import validate_name
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+
+app = FastAPI(
+    title="Baby Names API",
+    version="Development",
+    description="Search baby name popularity data by year.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 create_table()
 
 
-@app.route("/")
+@app.get("/")
 def home():
-    return jsonify({
+    return {
         "message": "Baby Names API is running!",
         "version": "Development",
         "endpoints": {
             "GET /": "API information",
-            "GET /nameinfo?name=<name>": "Get name statistics"
-        }
-    })
+            "GET /app": "Baby name analyzer web app",
+            "GET /nameinfo?name=<name>": "Get name statistics",
+            "GET /docs": "Interactive API docs",
+        },
+    }
 
 
-@app.route("/nameinfo")
-def name_info():
+@app.get("/app")
+def frontend():
+    return FileResponse(BASE_DIR / "index.html")
+
+
+@app.get("/nameinfo")
+def name_info(name: str = Query(..., description="Name to search for")):
     try:
-        name = validate_name(
-            request.args.get("name"),
-            message="Name parameter is required"
+        validated_name = validate_name(
+            name,
+            message="Name parameter is required",
         )
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     try:
         with get_connection() as conn:
@@ -39,17 +64,23 @@ def name_info():
                 WHERE name = ?
                 GROUP BY year
                 ORDER BY year ASC
-            """, (name,)).fetchall()
+            """, (validated_name,)).fetchall()
 
     except sqlite3.Error as e:
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}",
+        ) from e
 
     if not yearly_totals:
-        return jsonify({
-            "error": f"Name '{name}' not found in database",
-            "name": name,
-            "available": False
-        }), 404
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": f"Name '{validated_name}' not found in database",
+                "name": validated_name,
+                "available": False,
+            },
+        )
 
     first_year = yearly_totals[0][0]
     most_popular_year = max(yearly_totals, key=lambda row: row[1])[0]
@@ -57,8 +88,12 @@ def name_info():
         year for year, _ in sorted(
             yearly_totals,
             key=lambda row: row[1],
-            reverse=True
+            reverse=True,
         )[:10]
+    ]
+    yearly_data = [
+        {"year": year, "count": total_count}
+        for year, total_count in yearly_totals
     ]
 
     current_year = datetime.now().year
@@ -75,17 +110,19 @@ def name_info():
         else:
             trend = "stable"
 
-    return jsonify({
-        "name": name,
+    return {
+        "name": validated_name,
         "first_year": first_year,
         "most_popular_year": most_popular_year,
         "top_years": top_years,
+        "yearly_data": yearly_data,
         "estimated_age": estimated_age,
         "trend": trend,
-        "available": True
-    })
+        "available": True,
+    }
 
 
 if __name__ == "__main__":
-    create_table()
-    app.run(debug=True)
+    import uvicorn
+
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)

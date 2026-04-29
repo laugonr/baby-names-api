@@ -21,8 +21,8 @@ def validate_name(name, message="Name cannot be empty"):
 def validate_year(year_str):
     try:
         year = int(year_str)
-    except ValueError:
-        raise ValueError("Year must be a valid number")
+    except ValueError as exc:
+        raise ValueError("Year must be a valid number") from exc
 
     if year < MIN_YEAR or year > MAX_YEAR:
         raise ValueError(f"Year must be between {MIN_YEAR} and {MAX_YEAR}")
@@ -39,8 +39,8 @@ def validate_gender(gender):
 def validate_count(count_str):
     try:
         count = int(count_str)
-    except ValueError:
-        raise ValueError("Count must be a valid number")
+    except ValueError as exc:
+        raise ValueError("Count must be a valid number") from exc
 
     if count < 0:
         raise ValueError("Count cannot be negative")

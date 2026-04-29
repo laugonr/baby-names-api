@@ -35,3 +35,24 @@ def load_data(file_path):
 
         conn.commit()
     return imported_rows
+import os
+
+def load_all_data(folder="names"):
+    total = 0
+
+    for file in os.listdir(folder):
+        if file.startswith("yob") and file.endswith(".txt"):
+            path = os.path.join(folder, file)
+
+            try:
+                rows = load_data(path)
+                total += rows
+                print(f"Loaded {file}: {rows}")
+            except Exception as e:
+                print(f"Error loading {file}: {e}")
+
+    print(f"\nTOTAL LOADED: {total}")
+
+
+if __name__ == "__main__":
+    load_all_data("names")
