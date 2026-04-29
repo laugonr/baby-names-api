@@ -9,21 +9,19 @@ from fastapi.responses import FileResponse
 from database import create_table, get_connection
 from validation import validate_gender, validate_name
 
-# api.py is the main entry point for the app.
-# It defines the web routes, validates incoming requests, asks SQLite for data,
-# and sends JSON back to the browser.
+# Main web API for the baby names app.
+# It serves the browser page and returns name statistics as JSON.
 
-# The folder where this file lives. Used to find index.html.
+# Used to serve index.html from the same folder as this file.
 BASE_DIR = Path(__file__).resolve().parent
 
-# This creates the FastAPI application.
 app = FastAPI(
     title="Baby Names API",
     version="Development",
     description="Search baby name popularity data by year.",
 )
 
-# CORS lets the browser page call the API without being blocked.
+# Allow the browser page to call this API.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Make sure the database table exists before requests are handled.
+# Create the table at startup so the app can answer requests right away.
 create_table()
 
 
@@ -62,9 +60,8 @@ def name_info(
     gender: str = Query(..., description="Gender to search for: M or F"),
 ):
     """Return popularity stats for one name and one gender."""
-    # Step 1: validate query parameters from the URL.
     try:
-        # Clean and check user input before using it in the database query.
+        # Check user input before it reaches the database.
         validated_name = validate_name(
             name,
             message="Name parameter is required",
@@ -73,10 +70,9 @@ def name_info(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    # Step 2: read all matching rows from the database.
     try:
         with get_connection() as conn:
-            # Get total births for this name/gender grouped by year.
+            # One row per year, with duplicates combined just in case.
             yearly_totals = conn.execute("""
                 SELECT year, SUM(count) AS total_count
                 FROM baby_names
@@ -92,7 +88,7 @@ def name_info(
         ) from e
 
     if not yearly_totals:
-        # A 404 means the API worked, but no matching name was found.
+        # The request was valid, but this name/gender pair is not in the data.
         raise HTTPException(
             status_code=404,
             detail={
@@ -103,15 +99,13 @@ def name_info(
             },
         )
 
-    # Step 3: calculate the summary numbers shown on the web page.
-
-    # First year is the oldest record because the SQL query sorts by year.
+    # The query is sorted by year, so the first row is the oldest record.
     first_year = yearly_totals[0][0]
 
-    # The most popular year is the year with the highest birth count.
+    # Peak year is the year with the most births.
     most_popular_year = max(yearly_totals, key=lambda row: row[1])[0]
 
-    # Keep the top 10 years for display in the frontend.
+    # Keep the busiest years available for the UI.
     top_years = [
         year for year, _ in sorted(
             yearly_totals,
@@ -124,11 +118,11 @@ def name_info(
         for year, total_count in yearly_totals
     ]
 
-    # Estimated age is based on the year the name was most popular.
+    # A rough age estimate based on when the name peaked.
     current_year = datetime.now().year
     estimated_age = current_year - most_popular_year
 
-    # Simple trend: compare the first year count to the latest year count.
+    # Simple trend based on the first and latest recorded years.
     trend = "unknown"
     if len(yearly_totals) > 1:
         first_total = yearly_totals[0][1]
@@ -140,9 +134,7 @@ def name_info(
         else:
             trend = "stable"
 
-    # Step 4: return one organized JSON object for the frontend.
-
-    # This JSON response is what index.html uses to build the chart and stats.
+    # index.html uses this to build the stats and chart.
     return {
         "name": validated_name,
         "gender": validated_gender,

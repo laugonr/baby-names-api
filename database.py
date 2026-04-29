@@ -1,10 +1,9 @@
 import sqlite3
 from pathlib import Path
 
-# database.py keeps the SQLite setup in one place.
-# Other files call these helper functions instead of repeating database code.
+# Shared SQLite helpers for the API and data loader.
 
-# Store the database file in the same folder as the Python files.
+# Keep the database next to the app files.
 DB_NAME = Path(__file__).resolve().parent / "babynames.db"
 
 
@@ -18,7 +17,7 @@ def create_table():
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        # Main table for each name, year, gender, and number of births.
+        # One record per name, year, gender, and birth count.
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS baby_names (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +28,7 @@ def create_table():
         )
         """)
 
-        # Prevent duplicate records for the same name/year/gender.
+        # Running the loader twice should not create duplicate records.
         cursor.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_baby_name
         ON baby_names (name, year, gender)

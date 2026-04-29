@@ -1,10 +1,8 @@
 import re
 
-# validation.py protects the app from bad input before data is saved or queried.
-# The API and data loader both use these functions so the same rules apply
-# everywhere.
+# Validation shared by the API and the data loader.
 
-# Names can contain letters, spaces, hyphens, and apostrophes.
+# Names may include letters, spaces, hyphens, and apostrophes.
 NAME_PATTERN = re.compile(r"^[a-zA-Z\s\-']+$")
 
 
@@ -22,7 +20,7 @@ def validate_name(name, message="Name cannot be empty"):
 
 
 def validate_gender(gender):
-    """Make sure gender is either M or F."""
+    """Accept only M or F."""
     gender = gender.strip().upper()
     if gender not in ("M", "F"):
         raise ValueError("Gender must be 'M' or 'F'")
@@ -30,7 +28,7 @@ def validate_gender(gender):
 
 
 def validate_count(count_str):
-    """Make sure the birth count is a non-negative number."""
+    """Accept only non-negative birth counts."""
     try:
         count = int(count_str)
     except ValueError as exc:
