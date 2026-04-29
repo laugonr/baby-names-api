@@ -9,6 +9,10 @@ from fastapi.responses import FileResponse
 from database import create_table, get_connection
 from validation import validate_gender, validate_name
 
+# api.py is the main entry point for the app.
+# It defines the web routes, validates incoming requests, asks SQLite for data,
+# and sends JSON back to the browser.
+
 # The folder where this file lives. Used to find index.html.
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -58,6 +62,7 @@ def name_info(
     gender: str = Query(..., description="Gender to search for: M or F"),
 ):
     """Return popularity stats for one name and one gender."""
+    # Step 1: validate query parameters from the URL.
     try:
         # Clean and check user input before using it in the database query.
         validated_name = validate_name(
@@ -68,6 +73,7 @@ def name_info(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+    # Step 2: read all matching rows from the database.
     try:
         with get_connection() as conn:
             # Get total births for this name/gender grouped by year.
@@ -96,6 +102,8 @@ def name_info(
                 "available": False,
             },
         )
+
+    # Step 3: calculate the summary numbers shown on the web page.
 
     # First year is the oldest record because the SQL query sorts by year.
     first_year = yearly_totals[0][0]
@@ -131,6 +139,8 @@ def name_info(
             trend = "declining"
         else:
             trend = "stable"
+
+    # Step 4: return one organized JSON object for the frontend.
 
     # This JSON response is what index.html uses to build the chart and stats.
     return {

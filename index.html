@@ -383,21 +383,34 @@
 </div>
 
 <script>
+// index.html is the browser interface.
+// It collects the user's search, calls the FastAPI backend, and displays
+// the returned baby-name statistics as cards and a chart.
+
+// Store the current chart so it can be replaced after each new search.
 let chart;
+
+// The selected gender is shared by normal search and compare mode.
 let currentGender = 'M';
+
+// If the file is opened directly, call the local API server.
+// If FastAPI serves this page from /app, use the same domain.
 const apiBase = window.location.protocol === "file:" ? "http://localhost:8000" : "";
 
+// Update the selected gender and the active button styling.
 function setGender(g) {
   currentGender = g;
   document.getElementById('gBtn').classList.toggle('active', g === 'M');
   document.getElementById('gBtnF').classList.toggle('active', g === 'F');
 }
 
+// Show or hide the second name input when compare mode is switched.
 function toggleCompare() {
   const on = document.getElementById('compareToggle').checked;
   document.getElementById('name2wrap').style.display = on ? 'inline-flex' : 'none';
 }
 
+// Small helper functions for changing page state.
 function showLoader(v) {
   document.getElementById('loader').classList.toggle('active', v);
 }
@@ -410,6 +423,7 @@ function showResults(v) {
   document.getElementById('results').classList.toggle('active', v);
 }
 
+// Decide which badge best describes the name's popularity trend.
 function trendBadge(data) {
   if (data.length < 10) return { label: 'Limited data', cls: 'badge-stable' };
   const recent = data.slice(-10).reduce((s, d) => s + d.count, 0) / 10;
@@ -420,6 +434,7 @@ function trendBadge(data) {
   return                   { label: '〰 Staying steady', cls: 'badge-stable' };
 }
 
+// Convert API data into the four stat cards shown above the chart.
 function buildStats(data) {
   const trend = trendBadge(data.yearly_data);
   const peak  = data.yearly_data.reduce((a, b) => b.count > a.count ? b : a, data.yearly_data[0]);
@@ -453,6 +468,7 @@ function buildStats(data) {
   ];
 }
 
+// Put the stat card HTML into the page.
 function renderStats(stats) {
   const grid = document.getElementById('statGrid');
   grid.innerHTML = stats.map(s => `
@@ -464,6 +480,7 @@ function renderStats(stats) {
   `).join('');
 }
 
+// Build the short sentence below the cards using total and average births.
 function renderFunFact(data, name) {
   const total = data.yearly_data.reduce((s, d) => s + d.count, 0);
   const span  = data.yearly_data.length;
@@ -476,8 +493,11 @@ const COLORS = [
   { border: '#38bdf8', bg: 'rgba(56,189,248,0.12)' }
 ];
 
+// Draw or redraw the line chart with Chart.js.
 function drawChart(datasets) {
   const ctx = document.getElementById('chart');
+
+  // Destroying the old chart prevents duplicate charts from stacking.
   if (chart) chart.destroy();
 
   chart = new Chart(ctx, {
@@ -530,7 +550,7 @@ function drawChart(datasets) {
     }
   });
 
-  // Legend
+  // Build a custom legend that matches the chart colors.
   const lr = document.getElementById('legendRow');
   lr.innerHTML = datasets.map((ds, i) => `
     <div class="legend-item">
@@ -540,6 +560,7 @@ function drawChart(datasets) {
   `).join('');
 }
 
+// Convert different API error shapes into one readable message.
 function getErrorMessage(data) {
   if (typeof data.detail === 'string') return data.detail;
   if (data.detail?.error) return data.detail.error;
@@ -547,6 +568,7 @@ function getErrorMessage(data) {
   return data.error || 'No data found for this name.';
 }
 
+// Call the backend for one name and return its JSON data.
 async function fetchName(name) {
   const res  = await fetch(`${apiBase}/nameinfo?name=${encodeURIComponent(name)}&gender=${currentGender}`);
   const data = await res.json();
@@ -554,6 +576,7 @@ async function fetchName(name) {
   return { ...data, name };
 }
 
+// Main search flow: read inputs, fetch data, then update every result section.
 async function searchName() {
   const name1 = document.getElementById('nameInput').value.trim();
   if (!name1) return;
@@ -566,14 +589,19 @@ async function searchName() {
   showLoader(true);
 
   try {
+    // Always search the first name; add the second request only in compare mode.
     const requests = [fetchName(name1)];
     if (comparing && name2) requests.push(fetchName(name2));
 
+    // Promise.all lets the two comparison searches happen at the same time.
     const results = await Promise.all(requests);
 
+    // The cards and fun fact summarize the first searched name.
     const stats = buildStats(results[0]);
     renderStats(stats);
     renderFunFact(results[0], name1);
+
+    // The chart can show one or two names depending on compare mode.
     drawChart(results);
     showResults(true);
 

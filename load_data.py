@@ -4,6 +4,10 @@ import os
 from database import create_table, get_connection
 from validation import validate_count, validate_gender, validate_name
 
+# load_data.py imports Social Security baby-name text files into SQLite.
+# Run this script when you want to fill or update babynames.db from the
+# names/yobYYYY.txt data files.
+
 
 def extract_year(file_path):
     """Extract the 4-digit year from an SSA filename like yob2024.txt."""
@@ -16,6 +20,8 @@ def extract_year(file_path):
 
 def load_data(file_path):
     """Load one SSA baby-name file into the database."""
+    # This function handles one file at a time.
+
     # Make sure the table exists before inserting data.
     create_table()
 
@@ -29,6 +35,8 @@ def load_data(file_path):
             for line in file:
                 # Each SSA line looks like: Olivia,F,14718
                 name, gender, count = line.strip().split(",")
+
+                # INSERT OR IGNORE avoids duplicate rows if the loader is run twice.
                 cursor.execute("""
                     INSERT OR IGNORE INTO baby_names (name, year, gender, count)
                     VALUES (?, ?, ?, ?)
@@ -47,6 +55,7 @@ def load_data(file_path):
 
 def load_all_data(folder="names"):
     """Load every SSA file from a folder such as names/."""
+    # This function loops over the whole data folder and imports each year file.
     total = 0
 
     for file in os.listdir(folder):

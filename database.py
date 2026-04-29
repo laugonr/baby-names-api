@@ -1,6 +1,9 @@
 import sqlite3
 from pathlib import Path
 
+# database.py keeps the SQLite setup in one place.
+# Other files call these helper functions instead of repeating database code.
+
 # Store the database file in the same folder as the Python files.
 DB_NAME = Path(__file__).resolve().parent / "babynames.db"
 

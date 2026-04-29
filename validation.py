@@ -1,5 +1,9 @@
 import re
 
+# validation.py protects the app from bad input before data is saved or queried.
+# The API and data loader both use these functions so the same rules apply
+# everywhere.
+
 # Names can contain letters, spaces, hyphens, and apostrophes.
 NAME_PATTERN = re.compile(r"^[a-zA-Z\s\-']+$")
 
