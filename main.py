@@ -4,21 +4,26 @@ from validation import validate_count, validate_gender, validate_name, validate_
 import sqlite3
 import os
 
+
 def load_all_data():
+    """Load every SSA text file from the data folder."""
     folder = "data"   # your folder name
     total = 0
 
     try:
+        # Get all files in the folder before checking which ones are SSA files.
         files = os.listdir(folder)
     except FileNotFoundError:
         print("ERROR: 'data' folder not found")
         return
 
     for file in files:
+        # SSA files are named like yob2024.txt.
         if file.startswith("yob") and file.endswith(".txt"):
             path = os.path.join(folder, file)
 
             try:
+                # load_data reads one file and inserts its records.
                 rows = load_data(path)
                 total += rows
                 print(f"Loaded {file}: {rows}")
@@ -29,6 +34,7 @@ def load_all_data():
 
 
 def prompt_record(include_count=False):
+    """Ask the user for name, year, gender, and optionally count."""
     record = [
         validate_name(input("Enter name: ")),
         validate_year(input("Enter year: ")),
@@ -42,6 +48,7 @@ def prompt_record(include_count=False):
 def add_name():
     """Add a new name to the database."""
     try:
+        # Collect and validate the fields before inserting.
         name, year, gender, count = prompt_record(include_count=True)
         with get_connection() as conn:
             conn.execute("""
@@ -60,6 +67,7 @@ def add_name():
 def search_name():
     """Search for names in the database."""
     try:
+        # Search by name and show every matching year/gender record.
         name = validate_name(input("Enter name to search: "))
 
         with get_connection() as conn:
@@ -88,6 +96,7 @@ def search_name():
 def update_name():
     """Update a name's count in the database."""
     try:
+        # The name/year/gender combination finds exactly one record.
         name, year, gender = prompt_record()
         new_count = validate_count(input("Enter new count: "))
 
@@ -113,6 +122,7 @@ def update_name():
 def delete_name():
     """Delete a name from the database."""
     try:
+        # Ask for the exact record, then confirm before deleting it.
         name, year, gender = prompt_record()
 
         confirm = input(f"Are you sure you want to delete '{name}' ({gender}, {year})? (y/N): ")
@@ -141,6 +151,7 @@ def delete_name():
 def load_ssa_data():
     """Load SSA data from file"""
     try:
+        # Example file name: names/yob2024.txt
         file_path = input("Enter SSA file path: ").strip()
         if not file_path:
             print("ERROR: File path cannot be empty")
@@ -163,6 +174,7 @@ def load_ssa_data():
 
 def display_menu():
     """Display the main menu"""
+    # This is the text menu users see in the terminal.
     print("\n" + "="*40)
     print("      Baby Name Database Manager")
     print("="*40)
@@ -177,12 +189,14 @@ def display_menu():
 
 def menu():
     """Main menu loop"""
+    # Create the table once before the user starts choosing actions.
     create_table()
 
     while True:
         display_menu()
         choice = input("Enter your choice (1-6): ").strip()
 
+        # Route the user's menu choice to the correct function.
         if choice == "1":
             load_ssa_data()
         elif choice == "2":
